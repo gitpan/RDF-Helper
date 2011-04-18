@@ -1,44 +1,8 @@
-use Test::More tests => 45;
+use Test::More;
 
 use RDF::Helper;
 use RDF::Helper::TiedPropertyHash;
 use Data::Dumper;
-#----------------------------------------------------------------------
-# RDF::Core
-#----------------------------------------------------------------------
-
-
-SKIP: {
-  eval { require RDF::Core };
-  skip "RDF::Core not installed", 22 if $@;
-  
-  my $rdf = RDF::Helper->new(
-      BaseInterface => 'RDF::Core',
-      BaseURI => 'http://totalcinema.com/NS/test#',
-      Namespaces => { 
-        dc => 'http://purl.org/dc/elements/1.1/',
-        rdf => "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
-        '#default' => "http://purl.org/rss/1.0/",
-        slash => "http://purl.org/rss/1.0/modules/slash/",
-        taxo => "http://purl.org/rss/1.0/modules/taxonomy/",
-        syn => "http://purl.org/rss/1.0/modules/syndication/",
-        admin => "http://webns.net/mvcb/",
-     },
-  );
-  
-  test( $rdf );
-
-  my $in_memory = RDF::Helper->new(
-      BaseInterface => 'RDF::Core',
-      BaseURI => 'http://totalcinema.com/NS/test#',
-      Namespaces => { 
-        rdf => "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
-        dc => 'http://purl.org/dc/elements/1.1/',
-     },
-  );
-  
-  test_inmemory( $in_memory );
-}
 
 #----------------------------------------------------------------------
 # RDF::Redland
@@ -76,22 +40,31 @@ SKIP: {
 }
 
 #----------------------------------------------------------------------
-# DBI
+# RDF::Trine
 #----------------------------------------------------------------------
 SKIP: {
-  eval { require DBI };
-  skip "DBI not installed", 1 if $@;
-  unless ( $ENV{DBI_DSN} and $ENV{DBI_USER} and $ENV{DBI_PASS} ) {
-      skip "Environment not set up for running DBI tests, see the README", 1
-  }
+  eval { require RDF::Trine };
+  skip "RDF::Trine not installed", 22 if $@;
+
+  my $rdf = RDF::Helper->new(
+      BaseInterface => 'RDF::Trine',
+      BaseURI => 'http://totalcinema.com/NS/test#',
+      Namespaces => { 
+        dc => 'http://purl.org/dc/elements/1.1/',
+        rdf => "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+        '#default' => "http://purl.org/rss/1.0/",
+        slash => "http://purl.org/rss/1.0/modules/slash/",
+        taxo => "http://purl.org/rss/1.0/modules/taxonomy/",
+        syn => "http://purl.org/rss/1.0/modules/syndication/",
+        admin => "http://webns.net/mvcb/",
+     },
+  );
+  
+  test( $rdf );
 
   my $in_memory = RDF::Helper->new(
-      BaseInterface => 'DBI',
+      BaseInterface => 'RDF::Trine',
       BaseURI => 'http://totalcinema.com/NS/test#',
-      ModelName => 'testmodel',
-      DBI_DSN => $ENV{DBI_DSN},
-      DBI_USER => $ENV{DBI_USER},
-      DBI_PASS => $ENV{DBI_PASS},
       Namespaces => { 
         rdf => "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
         dc => 'http://purl.org/dc/elements/1.1/',
@@ -100,6 +73,12 @@ SKIP: {
   
   test_inmemory( $in_memory );
 }
+
+done_testing();
+
+#
+# Test Functions
+#
 
 sub test {
   my $rdf = shift;

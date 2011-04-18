@@ -1,4 +1,4 @@
-use Test::More tests => 15;
+use Test::More;
 
 use strict;
 use warnings;
@@ -8,20 +8,6 @@ use RDF::Helper;
 
 use constant URI1 => 'http://example.org/one';
 use constant XSD_INT => 'http://www.w3.org/2001/XMLSchema#int';
-#----------------------------------------------------------------------
-# RDF::Core
-#----------------------------------------------------------------------
-SKIP: {
-  eval { require RDF::Core };
-  skip "RDF::Core not installed", 5 if $@;
-
-  my $rdf = RDF::Helper->new(
-      BaseInterface => 'RDF::Core',
-      BaseURI => 'http://totalcinema.com/NS/test#'
-  );
-  
-  test( $rdf );
-}
 
 #----------------------------------------------------------------------
 # RDF::Redland
@@ -40,25 +26,19 @@ SKIP: {
 }
 
 #----------------------------------------------------------------------
-# DBI
+# RDF::Trine
 #----------------------------------------------------------------------
 SKIP: {
-  eval { require DBI };
-  skip "DBI not installed", 5 if $@;
-  unless ( $ENV{DBI_DSN} and $ENV{DBI_USER} and $ENV{DBI_PASS} ) {
-      skip "Environment not set up for running DBI tests, see the README", 5
-  }
+  eval { require RDF::Trine };
+  skip "RDF::Redland not installed", 5 if $@;
 
   my $rdf = RDF::Helper->new(
-      BaseInterface => 'DBI',
-      BaseURI => 'http://totalcinema.com/NS/test#',
-      ModelName => 'testmodel',
-      DBI_DSN => $ENV{DBI_DSN},
-      DBI_USER => $ENV{DBI_USER},
-      DBI_PASS => $ENV{DBI_PASS},
+      BaseInterface => 'RDF::Trine',
+      BaseURI => 'http://totalcinema.com/NS/test#'
   );
-  
+
   test( $rdf );
+
 }
 
 sub test {
@@ -73,3 +53,5 @@ sub test {
   ok($typed->literal_datatype->as_string eq XSD_INT);
   ok($langed->literal_value_language eq 'en-US');
 }
+
+done_testing();

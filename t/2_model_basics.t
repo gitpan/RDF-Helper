@@ -1,4 +1,4 @@
-use Test::More tests => 57;
+use Test::More;
 
 use strict;
 use warnings;
@@ -8,34 +8,6 @@ use RDF::Helper::Constants qw(:rdf :rss1 :foaf);
 
 use constant URI1 => 'http://example.org/one';
 use constant URI2 => 'http://example.org/two';
-
-#----------------------------------------------------------------------
-# RDF::Core
-#----------------------------------------------------------------------
-SKIP: {
-  eval { require RDF::Core };
-  skip "RDF::Core not installed", 19 if $@;
-
-  my $rdf = RDF::Helper->new(
-      BaseInterface => 'RDF::Core',
-      BaseURI => 'http://totalcinema.com/NS/test#'
-  );
-  
-  test( $rdf );
-  #print $rdf->serialize();
-
-  my $rdf2 = RDF::Helper->new(
-      BaseInterface => 'RDF::Core',
-      BaseURI => 'http://totalcinema.com/NS/test#',
-      Namespaces => {
-        rdf => RDF_NS,
-        rss => RSS1_NS
-      },
-      ExpandQNames => 1,
-  );
-  test_qnames( $rdf2 );
-  #warn $rdf2->serialize;
-}
 
 #----------------------------------------------------------------------
 # RDF::Redland
@@ -69,48 +41,42 @@ SKIP: {
 }
 
 #----------------------------------------------------------------------
-# DBI
+# RDF::Trine
 #----------------------------------------------------------------------
 SKIP: {
-  eval { require DBI };
-  skip "DBI not installed", 19 if $@;
-  unless ( $ENV{DBI_DSN} and $ENV{DBI_USER} and $ENV{DBI_PASS} ) {
-      skip "Environment not set up for running DBI tests, see the README", 19
-  }
+  eval { require RDF::Trine };
+  skip "RDF::Trine not installed", 19 if $@;
 
   my $rdf = RDF::Helper->new(
-      BaseInterface => 'DBI',
-      BaseURI => 'http://totalcinema.com/NS/test#',
-      ModelName => 'testmodel',
-      DBI_DSN => $ENV{DBI_DSN},
-      DBI_USER => $ENV{DBI_USER},
-      DBI_PASS => $ENV{DBI_PASS},
-      CreateNew => 1,
+      BaseInterface => 'RDF::Trine',
+      BaseURI => 'http://totalcinema.com/NS/test#'
   );
   
 
-  
   test( $rdf );
+  #print $rdf->serialize();
 
-  warn $rdf->serialize();
-  
   my $rdf2 = RDF::Helper->new(
-      BaseInterface => 'DBI',
+      BaseInterface => 'RDF::Trine',
       BaseURI => 'http://totalcinema.com/NS/test#',
-      ModelName => 'testmodel',
-      DBI_DSN => $ENV{DBI_DSN},
-      DBI_USER => $ENV{DBI_USER},
-      DBI_PASS => $ENV{DBI_PASS},
       Namespaces => {
         rdf => RDF_NS,
         rss => RSS1_NS
       },
       ExpandQNames => 1,
-      CreateNew => 1,
   );
-  
+
   test_qnames( $rdf2 );
+  #warn $rdf->serialize;
+
 }
+
+
+done_testing();
+
+#
+# Test Methods
+#
 
 sub test {
   my $rdf = shift;
@@ -179,5 +145,3 @@ sub test_qnames {
   ok( $rdf->count(undef, 'rss:description') == 1, 'count() with qnamed pred only.'); 
 
 }
-
-

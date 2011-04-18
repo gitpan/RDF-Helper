@@ -1,150 +1,90 @@
 package RDF::Helper::Statement;
-use strict;
-use warnings;
-use URI;
-use Data::Dumper;
+use Moose;
+use Moose::Util::TypeConstraints;
 
-sub new {
-    my $proto = shift;
-    my $class = ref( $proto ) || $proto;
-    my ($s, $p, $o) = @_;
-    return bless [$s, $p, $o], $class;
+class_type 'RDF::Helper::Node::Resource';
+class_type 'RDF::Helper::Node::Literal';
+class_type 'RDF::Helper::Node::Blank';
+
+my $ValidNode = subtype as
+'RDF::Helper::Node::Resource|RDF::Helper::Node::Literal|RDF::Helper::Node::Blank';
+
+has [qw(subject predicate object)] => (
+    isa      => $ValidNode,
+    is       => 'ro',
+    required => 1
+);
+
+sub BUILDARGS {
+    my $class = shift;
+    my ( $s, $p, $o ) = @_;
+    return { subject => $s, predicate => $p, object => $o };
 }
 
-sub subject {
-    my $self = shift;
-    my $new = shift;
-    if (defined( $new )) {
-        $self->[0] = $new;
-        return 1;
-    }
-    else {
-        return $self->[0];
-    }
-}
+package RDF::Helper::Node::API;
+use Moose::Role;
 
-sub predicate {
-    my $self = shift;
-    my $new = shift;
-    if (defined( $new )) {
-        $self->[1] = $new;
-        return 1;
-    }
-    else {
-        return $self->[1];
-    }
-}
+requires 'as_string';
 
-sub object {
-    my $self = shift;
-    my $new = shift;
-    if (defined( $new )) {
-        $self->[2] = $new;
-        return 1;
-    }
-    else {
-        return $self->[2];
-    }
-}
-
-package RDF::Helper::Node;
-use strict;
-use warnings;
-
-sub new {
-    my $proto = shift;
-    my $class = ref($proto) || $proto;
-    if ( scalar @_ == 1) {
-        my $thing = shift;
-        if (ref($thing) && $thing->isa('URI')) {
-            return bless( { uri => $thing }, 'RDF::Helper::Node::Resource');
-        }
-        else {
-            return bless( { value => $thing }, 'RDF::Helper::Node::Literal' );
-        }
-
-    }
-    my %args = @_;
-    return bless \%args, $class;
-}
-
-sub is_resource {
-	my $self	= shift;
-    return $self->isa('RDF::Helper::Node::Resource');
-}
-
-sub is_literal {
-	my $self	= shift;
-    return $self->isa('RDF::Helper::Node::Literal');
-}
-
-sub is_blank {
-	my $self	= shift;
-    return $self->isa('RDF::Helper::Node::Blank');
-}
-
-sub as_string {
-	my $self	= shift;
-	if ($self->is_literal) {
-		return $self->literal_value;
-	} 
-	elsif ($self->is_resource) {
-		return $self->uri_value;
-	} 
-	else {
-		return $self->blank_identifier;
-	}
-}
+sub is_resource { 0 }
+sub is_literal  { 0 }
+sub is_blank    { 0 }
 
 package RDF::Helper::Node::Resource;
-use strict;
-use warnings;
-use vars qw( @ISA );
+use Moose;
 use URI;
-@ISA = qw( RDF::Helper::Node );
+with qw(RDF::Helper::Node::API);
 
-sub uri {
-    my $self = shift;
-    return URI->new( $self->{uri} );
-}
+has uri => (
+    isa      => 'Str',
+    reader   => 'uri_value',
+    required => 1,
+);
 
-sub uri_value {
-    my $self = shift;
-    return $self->{uri};
-}
+sub uri         { URI->new( shift->uri_value ) }
+sub is_resource { 1 }
+sub as_string   { shift->uri_value }
 
 package RDF::Helper::Node::Literal;
-use strict;
-use warnings;
-use vars qw( @ISA );
-@ISA = qw( RDF::Helper::Node );
+use Moose;
+with qw(RDF::Helper::Node::API);
+
+has value => (
+    isa      => 'Str',
+    reader   => 'literal_value',
+    required => 1,
+);
+
+has datatype => (
+    is        => 'ro',
+    predicate => 'has_datatype'
+);
+
+has language => (
+    reader => 'literal_value_language',
+);
 
 sub literal_datatype {
     my $self = shift;
-    return undef unless defined $self->{datatype};
-    return URI->new( $self->{datatype} );
+    return unless defined $self->has_datatype;
+    return URI->new( $self->datatype );
 }
 
-sub literal_value {
-    my $self = shift;
-    return $self->{value};
-}
-
-sub literal_value_language {
-    my $self = shift;
-    return $self->{language};
-}
+sub is_literal { 1 }
+sub as_string  { shift->literal_value }
 
 package RDF::Helper::Node::Blank;
-use strict;
-use warnings;
-use vars qw( @ISA );
-@ISA = qw( RDF::Helper::Node );
+use Moose;
+with qw(RDF::Helper::Node::API);
 
-sub blank_identifier {
-    my $self = shift;
-    return $self->{identifier};
-}
+has identifier => (
+    isa      => 'Str',
+    reader   => 'blank_identifier',
+    required => 1
+);
 
+sub is_blank  { 1 }
+sub as_string { shift->blank_identifier }
 
-
+1
+__END__

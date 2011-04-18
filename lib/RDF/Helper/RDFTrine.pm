@@ -1,38 +1,33 @@
-package RDF::Helper::RDFRedland;
+package RDF::Helper::RDFTrine;
 use Moose;
 use MooseX::Aliases;
 
-use RDF::Redland;
-use RDF::Helper::RDFRedland::Query;
+use RDF::Trine;
 use Cwd;
 use RDF::Helper::Statement;
-
+use Data::Dumper;
 
 has query_interface => (
     isa     => 'Str',
     is      => 'ro',
-    default => 'RDF::Helper::RDFRedland::Query'
+    alias   => ['QueryInterface'],
+    default => 'RDF::Helper::RDFQuery'
 );
 
 has Model => (
-    isa      => 'RDF::Redland::Model',
+    isa      => 'RDF::Trine::Model',
     accessor => 'model',
     lazy     => 1,
     builder  => '_build_model'
 );
 
 sub _build_model {
-    RDF::Redland::Model->new(
-        RDF::Redland::Storage->new(
-            "hashes", "temp", "new='yes',hash-type='memory'"
-        ),
-        ""
-    );
+    RDF::Trine::Model->new( RDF::Trine::Store::Memory->new() );
 }
 
 has namespaces => (
     isa     => 'HashRef',
-    is      => 'ro',    
+    is      => 'ro',
     alias   => ['Namespaces'],
     builder => '_build_namespaces'
 );
@@ -45,7 +40,7 @@ has _NS => ( isa => 'HashRef', is => 'ro', );
 
 has ExpandQNames => ( isa => 'Bool', is => 'ro' );
 
-with qw(RDF::Helper::API  RDF::Helper::PerlConvenience );
+with qw(RDF::Helper::API  RDF::Helper::PerlConvenience);
 
 has base_uri => (
     isa     => 'Str',
@@ -69,22 +64,19 @@ sub BUILD {
 sub new_native_resource {
     my $self = shift;
     my $val  = shift;
-    return RDF::Redland::Node->new( RDF::Redland::URI->new($val) );
+    return RDF::Trine::Node::Resource->new($val);
 }
 
 sub new_native_literal {
     my $self = shift;
     my ( $val, $lang, $type ) = @_;
-    if ( defined($type) and !ref($type) ) {
-        $type = RDF::Redland::URI->new($type);
-    }
-    return RDF::Redland::Node->new_literal( "$val", $type, $lang );
+    return RDF::Trine::Node::Literal->new( $val, $lang, $type );
 }
 
 sub new_native_bnode {
     my $self = shift;
     my $id   = shift;
-    return RDF::Redland::Node->new_from_blank_identifier($id);
+    return RDF::Trine::Node::Blank->new($id);
 }
 
 sub assert_literal {
@@ -97,12 +89,12 @@ sub assert_literal {
 
     $obj =
         ref($o)
-      ? $o->does('RDF::Helper::Node::API')
-          ? $self->helper2native($o)
+      ? $o->does('RDF::Helper::Node::API') 
+          ? $self->helper2native($o) 
           : $o
       : $self->new_native_literal("$o");
     push @nodes, $obj;
-    $self->model->add_statement(@nodes);
+    $self->model->add_statement( RDF::Trine::Statement->new(@nodes) );
 }
 
 sub assert_resource {
@@ -115,14 +107,14 @@ sub assert_resource {
 
     $obj =
         ref($o)
-      ? $o->does('RDF::Helper::Node::API')
-          ? $self->helper2native($o)
+      ? $o->does('RDF::Helper::Node::API') 
+          ? $self->helper2native($o) 
           : $o
       : $self->new_native_resource(
         $self->ExpandQNames ? $self->qname2resolved($o) : $o );
 
     push @nodes, $obj;
-    $self->model->add_statement(@nodes);
+    $self->model->add_statement( RDF::Trine::Statement->new(@nodes) );
 }
 
 sub add_statement {
@@ -133,8 +125,7 @@ sub add_statement {
     foreach my $type qw( subject predicate object ) {
         push @nodes, $self->helper2native( $statement->$type );
     }
-
-    $self->model->add_statement(@nodes);
+    $self->model->add_statement( RDF::Trine::Statement->new(@nodes) );
 }
 
 sub remove_statements {
@@ -149,7 +140,7 @@ sub remove_statements {
             push @nodes, $self->helper2native( $s->$type );
         }
 
-        $self->model->remove_statement( RDF::Redland::Statement->new(@nodes) );
+        $self->model->remove_statement( RDF::Trine::Statement->new(@nodes) );
         $del_count++;
     }
 
@@ -164,7 +155,7 @@ sub update_node {
 
     # first, try to grok the type form the incoming node
 
-    if ( ref($new) and $new->does('RDF::Redland::Node::API') ) {
+    if ( ref($new) and $new->does('RDF::Trine::Node::API') ) {
         if ( $new->is_literal ) {
             $update_method = 'update_literal';
         }
@@ -199,38 +190,31 @@ sub get_enumerator {
 
     my @nodes = map { $self->helper2native($_) } ( $subj, $pred, $obj );
 
-    return RDF::Helper::RDFRedland::Enumerator->new(
-        statement => RDF::Redland::Statement->new(@nodes),
+    return RDF::Helper::RDFTrine::Enumerator->new(
+        statement => RDF::Trine::Statement->new(@nodes),
         model     => $self->model,
     );
 }
-
 
 #---------------------------------------------------------------------
 # Batch inclusions
 #---------------------------------------------------------------------
 
-
 sub include_rdfxml {
     my $self = shift;
     my %args = @_;
-    my $p    = RDF::Redland::Parser->new('rdfxml');
+    my $p    = RDF::Trine::Parser->new('rdfxml');
 
-    my $base_uri = RDF::Redland::URI->new( $self->BaseURI );
+    my $base_uri = $self->BaseURI;
 
     if ( defined( $args{filename} ) ) {
-        my $file = $args{filename};
-        if ( $file !~ /^file:/ ) {
-            $file = 'file:' . $file;
-        }
-        my $source_uri = RDF::Redland::URI->new($file);
-        $p->parse_into_model( $source_uri, $base_uri, $self->model() );
+        $p->parse_file_into_model( $base_uri, $args{filename}, $self->model() );
     }
     elsif ( defined( $args{xml} ) ) {
-        $p->parse_string_into_model( $args{xml}, $base_uri, $self->model() );
+        $p->parse_into_model( $base_uri, $args{xml}, $self->model() );
     }
     else {
-        confess
+        die
           "Missing argument. Yous must pass in an 'xml' or 'filename' argument";
     }
     return 1;
@@ -244,56 +228,28 @@ sub serialize {
     my $self = shift;
     my %args = @_;
 
-    $args{format} ||= 'rdfxml-abbrev';
-    my $serializer = undef;
+    $args{format} ||= 'rdfxml';
 
-    # Trix is handled differently
-    if ( $args{format} eq 'trix' ) {
-        eval "require RDF::Trix::Serializer::Redland";
-        $serializer =
-          RDF::Trix::Serializer::Redland->new( Models => [ [ $self->model ] ] );
-
-        # XXX: Cleanup on aisle 5...
-        my $trix = $serializer->as_string();
-
-        if ( $args{filename} ) {
-            open( TRIX, $args{filename} )
-              || die "could not open file '$args{filename}' for writing: $! \n";
-            print TRIX $trix;
-            close TRIX;
-            return 1;
-        }
-        return $trix;
-    }
-
-    $serializer = RDF::Redland::Serializer->new( $args{format} );
-    if ( $serializer->can("set_namespace") ) {
-        while ( my ( $prefix, $uri ) = each %{ $self->namespaces } ) {
-            next if ( $prefix eq 'rdf' or $prefix eq '#default' );
-            $serializer->set_namespace( $prefix, RDF::Redland::URI->new($uri) );
-        }
-    }
+    my $serializer = RDF::Trine::Serializer->new( $args{format} );
 
     if ( $args{filename} ) {
         return $serializer->serialize_model_to_file( $args{filename},
-            RDF::Redland::URI->new( $self->BaseURI ),
             $self->model );
     }
     else {
-        return $serializer->serialize_model_to_string(
-            RDF::Redland::URI->new( $self->BaseURI ),
-            $self->model );
+        return $serializer->serialize_model_to_string( $self->model );
     }
 }
 
+1;
+
 #---------------------------------------------------------------------
-# Redland-specific enumerator
+# RDF::Trine-specific enumerator
 #---------------------------------------------------------------------
 
-package RDF::Helper::RDFRedland::Enumerator;
-use strict;
-use warnings;
-use RDF::Redland::Statement;
+package RDF::Helper::RDFTrine::Enumerator;
+use Moose; 
+use RDF::Trine::Statement;
 use RDF::Helper::Statement;
 
 sub new {
@@ -302,12 +258,11 @@ sub new {
     my $class = ref($proto) || $proto;
     die "Not enough args" unless $args{model};
     my $statement = delete $args{statement}
-      || RDF::Redland::Statement->new( undef, undef, undef );
+      || RDF::Trine::Statement->new( undef, undef, undef );
     my $self = bless \%args, $class;
-    $self->{stream} = $self->{model}->find_statements($statement);
+    $self->{stream} = $self->{model}->get_statements( $statement->nodes );
     return $self;
 }
-##
 
 sub next {
     my $self = shift;
@@ -336,7 +291,7 @@ sub process_node {
 
     my $out = undef;
     if ( $in->is_resource ) {
-        $out = RDF::Helper::Node::Resource->new( uri => $in->uri->as_string );
+        $out = RDF::Helper::Node::Resource->new( uri => $in->uri_value );
     }
     elsif ( $in->is_blank ) {
         $out =
@@ -345,7 +300,13 @@ sub process_node {
     else {
         my $type_uri = undef;
         if ( my $uri = $in->literal_datatype ) {
-            $type_uri = $uri->as_string;
+            
+            $type_uri = blessed($uri)
+              ? $uri->can('as_string')
+                  ? $uri->as_string
+                  : confess "$uri is not something we can coerce"
+              : $uri;
+
         }
         $out = RDF::Helper::Node::Literal->new(
             value    => $in->literal_value,
@@ -361,12 +322,12 @@ __END__
 
 =head1 NAME
 
-RDF::Helper::RDFReland - RDF::Helper bridge for RDF::Redland
+RDF::Helper::RDFReland - RDF::Helper bridge for RDF::Trine
 
 =head1 SYNOPSIS
 
-  my $model = RDF::Redland::Model->new( 
-      RDF::Redland::Storage->new( %storage_options )
+  my $model = RDF::Trine::Model->new( 
+      RDF::Trine::Storage->new( %storage_options )
   );
 
   my $rdf = RDF::Helper->new(
@@ -376,7 +337,7 @@ RDF::Helper::RDFReland - RDF::Helper bridge for RDF::Redland
 
 =head1 DESCRIPTION
 
-RDF::Helper::RDFRedland is the bridge class that connects RDF::Helper's facilites to RDF::Redland and should not be used directly. 
+RDF::Helper::RDFTrine is the bridge class that connects RDF::Helper's facilites to RDF::Trine and should not be used directly. 
 
 See L<RDF::Helper> for method documentation
 
@@ -394,6 +355,7 @@ it under the same terms as Perl itself.
 
 =head1 SEE ALSO
 
-L<RDF::Helper> L<RDF::Redland>.
+L<RDF::Helper> L<RDF::Trine>.
 
 =cut
+
