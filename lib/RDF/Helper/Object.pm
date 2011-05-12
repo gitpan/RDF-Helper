@@ -2,7 +2,7 @@ package RDF::Helper::Object;
 use strict;
 use warnings;
 use Data::Dumper;
-use Data::Uniqid;
+use Data::UUID;
 use RDF::Helper::TiedPropertyHash;
 use vars qw( $AUTOLOAD );
 use overload
@@ -22,18 +22,35 @@ RDF::Helper::Object - Perl extension to use RDF property names as methods
   use RDF::Helper;
   my $rdf = RDF::Helper->new(
       BaseInterface => 'RDF::Trine',
-      Namespaces => { 
+      namespaces => { 
         dc => 'http://purl.org/dc/terms/',
         rdf => "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
-        '#default' => "http://purl.org/rss/1.0/"
+        '#default' => "http://xmlns.com/foaf/0.1/"
      }
   );
-  my $obj = $rdf->get_object('http://use.perl.org/');
-  $obj->rdf_type("http://purl.org/rss/1.0/channel");
-  $obj->title("RSS Channel");
-  $obj->description("The description of this RSS feed");
+  my $obj = $rdf->get_object('http://dahut.pm.org/dahut_group.rdf#bender');
+  $obj->rdf_type('http://xmlns.com/foaf/0.1/Person');
+  $obj->name("Bender");
+  $obj->dc_description("A description of Bender");
+  print $rdf->serialize(format => 'rdfxml')
 
 =head1 DESCRIPTION
+
+An object of this class is returned by the L<RDF::Helper>
+C<get_object> method, which takes a B<subject> URI as the first
+argument, and optionally a hash or hashref of options as the second
+argument.
+
+On this object, you may then call methods that correspond to property
+names of the properties you want to get or set.
+
+For properties in the default namespace, you may use them without any
+regard to prefixes, whereas with properties in other namespaces, you
+need to use the prefix and an underscore before the property name.
+
+This class does not make any attempt to verify whether the methods are
+actually valid properties within the used schema, it just blindly does
+what you tell it to.
 
 =cut
 
@@ -51,8 +68,11 @@ sub new {
 
     my $self = {};
     $self->{_datastore_} = $args{RDFHelper};
+    my $ug    = new Data::UUID;
+    my $uuid = $ug->create();
 
-    $self->{_uri_} = $args{ResourceURI} || "urn:" . Data::Uniqid::uniqid;
+    $self->{_uri_} = $args{ResourceURI} || "urn:" . $ug->to_string( $uuid );
+
     $self->{_rdftype_} = $args{RDFType};
     $self->{_defaultns_} = $args{DefaultNS} || $self->{_datastore_}->namespaces->{'#default'} || '';
         

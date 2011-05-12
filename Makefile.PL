@@ -20,12 +20,14 @@ my %WriteMakefileArgs = (
   'LICENSE' => 'perl',
   'NAME' => 'RDF::Helper',
   'PREREQ_PM' => {
-    'Data::Uniqid' => '0',
+    'Data::UUID' => '0',
+    'Moose' => '1.09',
+    'MooseX::Aliases' => '0',
     'RDF::Query' => '2.905',
     'Test::Simple' => '0.88',
     'URI' => '0'
   },
-  'VERSION' => '1.99_01',
+  'VERSION' => '1.99_02',
   'test' => {
     'TESTS' => 't/*.t'
   }

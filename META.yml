@@ -13,8 +13,10 @@ meta-spec:
   version: 1.4
 name: RDF-Helper
 requires:
-  Data::Uniqid: 0
+  Data::UUID: 0
+  Moose: 1.09
+  MooseX::Aliases: 0
   RDF::Query: 2.905
   Test::Simple: 0.88
   URI: 0
-version: 1.99_01
+version: 1.99_02

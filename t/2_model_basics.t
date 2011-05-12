@@ -14,7 +14,7 @@ use constant URI2 => 'http://example.org/two';
 #----------------------------------------------------------------------
 SKIP: {
   eval { require RDF::Redland };
-  skip "RDF::Redland not installed", 19 if $@;
+  skip "RDF::Redland not installed", 25 if $@;
 
   my $rdf = RDF::Helper->new(
       BaseInterface => 'RDF::Redland',
@@ -37,6 +37,18 @@ SKIP: {
 
   test_qnames( $rdf2 );
   #warn $rdf->serialize;
+
+  my $rdf3 = RDF::Helper->new(
+      BaseInterface => 'RDF::Redland',
+      BaseURI => 'http://totalcinema.com/NS/test#',
+      namespaces => {
+        rdf => RDF_NS,
+        rss => RSS1_NS
+      },
+      ExpandQNames => 1,
+  );
+
+  test_qnames( $rdf3 );
 
 }
 
@@ -45,7 +57,7 @@ SKIP: {
 #----------------------------------------------------------------------
 SKIP: {
   eval { require RDF::Trine };
-  skip "RDF::Trine not installed", 19 if $@;
+  skip "RDF::Trine not installed", 25 if $@;
 
   my $rdf = RDF::Helper->new(
       BaseInterface => 'RDF::Trine',
@@ -68,6 +80,17 @@ SKIP: {
 
   test_qnames( $rdf2 );
   #warn $rdf->serialize;
+  my $rdf3 = RDF::Helper->new(
+      BaseInterface => 'RDF::Trine',
+      BaseURI => 'http://totalcinema.com/NS/test#',
+      namespaces => {
+        rdf => RDF_NS,
+        rss => RSS1_NS
+      },
+      ExpandQNames => 1,
+  );
+
+  test_qnames( $rdf3 );
 
 }
 

@@ -33,7 +33,7 @@ SKIP: {
 #----------------------------------------------------------------------
 SKIP: {
   eval { require RDF::Trine };
-  skip "RDF::Trine not installed", 6 if $@;
+  skip "RDF::Trine not installed", 12 if $@;
 
   my $rdf = RDF::Helper->new(
       BaseInterface => 'RDF::Trine',
@@ -50,6 +50,22 @@ SKIP: {
      },
   );
    test( $rdf );
+
+  my $rdf2 = RDF::Helper->new(
+      BaseInterface => 'RDF::Trine',
+      BaseURI => 'http://totalcinema.com/NS/test#',
+      QueryInterface => 'RDF::Helper::RDFQuery',
+      namespaces => { 
+        dc => 'http://purl.org/dc/elements/1.1/',
+        rdf => "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+        '#default' => "http://purl.org/rss/1.0/",
+        slash => "http://purl.org/rss/1.0/modules/slash/",
+        taxo => "http://purl.org/rss/1.0/modules/taxonomy/",
+        syn => "http://purl.org/rss/1.0/modules/syndication/",
+        admin => "http://webns.net/mvcb/",
+     },
+  );
+   test( $rdf2 );
 }
 
 
@@ -143,7 +159,7 @@ sub test {
              $result3_count++;
         }
     }
-  warn "Hash count $hash_count ER@ count $result3_count \n";
+  note "Hash count $hash_count ER@ count $result3_count \n";
 
     ok( $hash_count == $result3_count, 'RDF::Query sparql query returned the expected number of results' );
 
