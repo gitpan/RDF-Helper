@@ -14,10 +14,14 @@ use constant XSD_INT => 'http://www.w3.org/2001/XMLSchema#int';
 #----------------------------------------------------------------------
 SKIP: {
   eval { require RDF::Redland };
-  skip "RDF::Redland not installed", 5 if $@;
+  skip "RDF::Redland not installed", 6 if $@;
 
   my $rdf = RDF::Helper->new(
       BaseInterface => 'RDF::Redland',
+      namespaces => {
+		     xsd => 'http://www.w3.org/2001/XMLSchema#',
+		    },
+      ExpandQNames => 1,
       BaseURI => 'http://totalcinema.com/NS/test#'
   );
   
@@ -30,10 +34,14 @@ SKIP: {
 #----------------------------------------------------------------------
 SKIP: {
   eval { require RDF::Trine };
-  skip "RDF::Redland not installed", 5 if $@;
+  skip "RDF::Redland not installed", 6 if $@;
 
   my $rdf = RDF::Helper->new(
       BaseInterface => 'RDF::Trine',
+      namespaces => {
+		     xsd => 'http://www.w3.org/2001/XMLSchema#',
+		    },
+      ExpandQNames => 1,
       BaseURI => 'http://totalcinema.com/NS/test#'
   );
 
@@ -48,10 +56,12 @@ sub test {
   ok( $rdf->new_bnode );
 
   my $typed = $rdf->new_literal('15', undef, XSD_INT);
+  my $typed2 = $rdf->new_literal('42.17', undef, 'xsd:decimal');
   my $langed = $rdf->new_literal('Speek Amurrican', 'en-US');
 
-  ok($typed->literal_datatype->as_string eq XSD_INT);
-  ok($langed->literal_value_language eq 'en-US');
+  is($typed->literal_datatype->as_string, XSD_INT);
+  is($typed2->literal_datatype->as_string, 'http://www.w3.org/2001/XMLSchema#decimal');
+  is($langed->literal_value_language, 'en-US');
 }
 
 done_testing();
